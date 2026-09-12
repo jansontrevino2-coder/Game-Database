@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Universal Game-Hub</title>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Comic+Relief&display=swap');
+
+:root {
+    --purple-main: #b06bff;
+    --purple-glow: rgba(176, 107, 255, 0.6);
+    --purple-soft: rgba(176, 107, 255, 0.15);
+}
+
+body {
+    background: #000000;
+    color: #e6e6e6;
+    font-family: 'Comic Relief', Arial, sans-serif;
+    margin: 0;
+}
+
+header {
+    padding: 25px;
+    text-align: center;
+    background: #0a0013;
+    font-size: 40px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    color: var(--purple-main);
+    box-shadow: 0 0 25px var(--purple-glow);
+}
+
+#games {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 35px;
+    padding: 35px;
+}
+
+.game {
+    background: var(--purple-soft);
+    padding: 20px;
+    border-radius: 18px;
+    text-align: center;
+    cursor: pointer;
+    transition: 0.25s;
+    backdrop-filter: blur(6px);
+    box-shadow: 0 0 25px rgba(0,0,0,0.4);
+    opacity: 0;
+    animation: fadeIn 0.4s forwards;
+}
+
+.game:hover {
+    background: rgba(176, 107, 255, 0.25);
+    transform: translateY(-6px) scale(1.05);
+    box-shadow: 0 0 30px var(--purple-glow);
+}
+
+.game img {
+    width: 100%;
+    height: 240px;
+    object-fit: cover;
+    border-radius: 14px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.5);
+}
+
+.game-title {
+    margin-top: 16px;
+    font-size: 26px;
+    font-weight: bold;
+    color: var(--purple-main);
+    text-shadow: 0 0 12px var(--purple-glow);
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ⭐ GAME TOP BAR (BLACK + PURPLE BUTTONS) */
+#gameBar {
+    background: #000000;
+    color: white;
+    padding: 12px 20px;
+    font-size: 22px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    /* removed purple line */
+    /* border-bottom: 3px solid var(--purple-main); */
+}
+
+#gameBar button {
+    background: var(--purple-main);
+    color: white;
+    border: none;
+    padding: 8px 14px;
+    margin-left: 10px;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+    font-weight: bold;
+    box-shadow: 0 0 10px var(--purple-glow);
+}
+
+#gameBar button:hover {
+    background: #d3a2ff;
+}
+</style>
+</head>
+<body>
+
+<header>Universal Game-Hub</header>
+<div id="games"></div>
+
+<script>
+const username = "jansontrevino2-coder";
+const repo = "Game-Database";
+const folder = "Games";
+
+async function fetchGames() {
+    const apiURL = `https://api.github.com/repos/${username}/${repo}/contents/${folder}`;
+    const response = await fetch(apiURL);
+    const items = await response.json();
+
+    const container = document.getElementById("games");
+    container.innerHTML = "";
+
+    for (const item of items) {
+        if (item.type === "dir") {
+            const gameName = item.name;
+
+            const gameFolderURL = `https://api.github.com/repos/${username}/${repo}/contents/${folder}/${gameName}`;
+            const gameFilesResponse = await fetch(gameFolderURL);
+            const gameFiles = await gameFilesResponse.json();
+
+            const htmlFile = gameFiles.find(f => f.name.toLowerCase().endsWith(".html"));
+            if (!htmlFile) continue;
+
+            const coverFile = gameFiles.find(f => f.name.toLowerCase() === "cover.png");
+            const coverURL = coverFile ? coverFile.download_url : "https://via.placeholder.com/300x200?text=No+Cover";
+
+            const div = document.createElement("div");
+            div.className = "game";
+
+            div.innerHTML = `
+                <img src="${coverURL}">
+                <div class="game-title">${gameName}</div>
+            `;
+
+            div.onclick = async () => {
+                const htmlText = await fetch(htmlFile.download_url).then(r => r.text());
+                const blob = new Blob([htmlText], { type: "text/html" });
+                const url = URL.createObjectURL(blob);
+
+                loadGameSameTab(gameName, url);
+            };
+
+            container.appendChild(div);
+        }
+    }
+}
+
+function loadGameSameTab(name, blobURL) {
+    document.body.innerHTML = `
+        <div id="gameBar">
+            <div>${name}</div>
+            <div>
+                <button onclick="fullscreenGame()">Fullscreen</button>
+                <button onclick="window.open('${blobURL}', '_blank')">Open in New Tab</button>
+                <button onclick="location.reload()">Close</button>
+            </div>
+        </div>
+        <iframe id="gameFrame" src="${blobURL}" style="width:100%; height: calc(100vh - 60px); border:none;"></iframe>
+    `;
+}
+
+function fullscreenGame() {
+    const frame = document.getElementById("gameFrame");
+    if (frame.requestFullscreen) frame.requestFullscreen();
+}
+
+fetchGames();
+</script>
+
+</body>
+</html>
